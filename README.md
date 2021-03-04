@@ -2,7 +2,7 @@
 
 
 ## Lecture
-- base url: `http://catsapi.ddns.net:6001`
+- base url: ``
 
 ## Deployment
 
@@ -10,7 +10,7 @@
 `python3 setup.py install`
 
 ### Run
-simply type `cats`
+simply type `pokemon`
 
 ### Documentation
-Visit `http://catsapi.ddns.net:6001/cats/v1/`
+Visit ``

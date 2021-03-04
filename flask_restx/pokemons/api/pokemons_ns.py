@@ -5,8 +5,10 @@
 
 import datetime
 from flask_restx import Resource
-
-from pokemons.run import api
+import numpy as np
+import pandas as pd
+import psycopg2 as psycopg2
+from api.v1 import api
 from pokemons.core import cache, limiter
 from pokemons.api.pokemons_models import pokemon_model
 from pokemons.api.pokemons_parsers import pokemon_args_name_arguments, pokemon_body_name_arguments, pokemon_arguments
@@ -15,6 +17,7 @@ from pokemons.utils import handle400error, handle404error, handle500error
 pokemons_ns = api.namespace('pokemons', description='Provides pokemons information')
 
 pokemons_model = {}
+con = psycopg2.connect(database= "pokemon",user="postgres",password="563412",host="127.0.0.1",port="5432")
 
 @pokemons_ns.route('/pokemons')
 class pokemonsCollection(Resource):
@@ -31,27 +34,40 @@ class pokemonsCollection(Resource):
         """
         Returns a pokemon if that pokemon exists in the database, else returns all pokemons in the database
         """
-
         # retrieve and chek arguments
         try:
-            args = cat_args_name_arguments.parse_args()
-            cat_name = args['cat'] if 'cat' in args else None
+            args = pokemon_args_name_arguments.parse_args()
+            cur = con.cursor()
+            if args['pokemon'] is not None:
+                query= f"select * from public.pokemon where name = '{args['pokemon']}'"
+                cur.execute(query)
+                rows = cur.fetchall()
+                if len(rows) != 0:
+                    pokemon_name = rows[0]
+                else:
+                    pokemon_name =  None
+            else:
+                pokemon_name = None
+            print (pokemon_name)
         except:
-            return handle400error(pokemons_ns, 'The providen arguments are not correct. Please, check the swagger documentation at /v1')
+            return handle400error(pokemons_ns, 'The provided arguments are not correct. Please, check the swagger documentation at /v1')
 
         # check parameters
-        if cat_name is not None and cat_name not in pokemons_model:
-            return handle404error(pokemons_ns, 'The providen cat was not found.')
+        if pokemon_name is None and (args['pokemon']) is not None:
+            return handle404error(pokemons_ns, 'The provided pokemon was not found.')
 
         # build result 
         try:
-            if cat_name is None:
-                pokemons = [v for k,v in pokemons_model.items()]
+            if pokemon_name is None:
+                query= "select * from public.pokemon"
+                cur=con.cursor()
+                cur.execute(query)
+                rows = cur.fetchall()
+                pokemons = "Test"
             else:
-                pokemons = [pokemons_model[cat_name]]
+                pokemons = "pokemon_name"
         except:
             return handle500error(pokemons_ns)
-
         # if there is not pokemons found, return 404 error
         if not pokemons:
             return handle404error(pokemons_ns, 'No pokemons founds.')
@@ -59,7 +75,7 @@ class pokemonsCollection(Resource):
         return pokemons
 
     @limiter.limit('1000/hour') 
-    @api.expect(cat_arguments)
+    @api.expect(pokemon_arguments)
     @api.response(200, 'OK')
     @api.response(404, 'Data not found')
     @api.response(500, 'Unhandled errors')
@@ -68,7 +84,7 @@ class pokemonsCollection(Resource):
     def post(self):
         """
         Creates a cat
-        """
+        
 
         # retrieve and chek arguments
         try:
@@ -87,9 +103,10 @@ class pokemonsCollection(Resource):
             pokemons_model[cat_name] = cat_properties
         except:
             return handle500error(pokemons_ns)
-
+        """
+        return "post"
     @limiter.limit('1000/hour') 
-    @api.expect(cat_arguments)
+    @api.expect(pokemon_arguments)
     @api.response(200, 'OK')
     @api.response(404, 'Data not found')
     @api.response(500, 'Unhandled errors')
@@ -98,7 +115,7 @@ class pokemonsCollection(Resource):
     def put(self):
         """
         Updates a cat
-        """
+        
 
         # retrieve and chek arguments
         try:
@@ -117,10 +134,10 @@ class pokemonsCollection(Resource):
             pokemons_model[cat_name] = cat_properties
         except:
             return handle500error(pokemons_ns)
-
-
+        """
+        return "put"
     @limiter.limit('1000/hour') 
-    @api.expect(cat_body_name_arguments)
+    @api.expect(pokemon_body_name_arguments)
     @api.response(200, 'OK')
     @api.response(404, 'Data not found')
     @api.response(500, 'Unhandled errors')
@@ -129,7 +146,7 @@ class pokemonsCollection(Resource):
     def delete(self):
         """
         Deletes a cat
-        """
+        
 
         # retrieve and chek arguments
         try:
@@ -147,3 +164,5 @@ class pokemonsCollection(Resource):
             del pokemons_model[cat_name]
         except:
             return handle500error(pokemons_ns)
+        """
+        return "delete"

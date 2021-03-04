@@ -23,7 +23,7 @@ setup(
     version='1.0',
     packages=find_packages(),
     url='https://github.com/DarioGar',
-    download_url='https://github.com/bisite/APIs/archive/master.zip',
+    download_url='https://github.com/DarioGar/Pokemon-API.git',
     license='GNU Affero General Public License v3',
     author='BISITE Research Group',
     author_email='Dariogm95@usal.es',
@@ -33,7 +33,7 @@ setup(
     install_requires=list(read_requeriments_file('requirements.txt')),
     entry_points={
         'console_scripts': [
-            'cats=cats.run:main'
+            'pokemon=pokemon.run:main'
         ],
     },
     include_package_data=True,
