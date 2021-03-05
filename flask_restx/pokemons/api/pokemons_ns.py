@@ -92,7 +92,7 @@ class pokemonsCollection(Resource):
             pokemon_name = args['pokemon']
             pokemon_properties = args['properties']
         except:
-            return handle400error(pokemons_ns, 'The providen arguments are not correct. Please, check the swagger documentation at /v1')
+            return handle400error(pokemons_ns, 'The provided arguments are not correct. Please, check the swagger documentation at /v1')
 
         # check parameters
         cur = con.cursor()
@@ -101,22 +101,24 @@ class pokemonsCollection(Resource):
             cur.execute(query)
             rows = cur.fetchall()
         if rows[0] != (0,):
-            return handle400error(pokemons_ns, 'The providen pokemon was already created')
+            return handle400error(pokemons_ns, 'The provided pokemon was already created')
 
-        # build cat 
+        # build the pokemon
         try:
             cur = con.cursor()
             name = args['pokemon']
             types = args['properties']['type']
-            region = args['properties']['region']
-            height = args['properties']['height']
-
-            if len(types) > 2:
-                return handle400error(pokemons_ns, "The provided arguments are not correct. Pokemon's can't have more than two types ...yet")
-            query = f"insert into public.pokemon values ('{name}','{{{json.dumps(types)[1:-1]}}}','{region}','{height}') returning name"
-            cur.execute(query)
+            if len(types) <=2:
+                region = args['properties']['region']
+                height = float(args['properties']['height'])
+                query = f"insert into public.pokemon values ('{name}','{{{json.dumps(types)[1:-1]}}}','{region}',{height})"
+                retorno = cur.execute(query)
+                con.commit()
         except:
             return handle500error(pokemons_ns)
+
+        if len(types) > 2:
+            return handle400error(pokemons_ns, "The provided arguments are not correct. Pokemon's can't have more than two types ...yet")
     @limiter.limit('1000/hour') 
     @api.expect(pokemon_arguments)
     @api.response(200, 'OK')
@@ -126,28 +128,43 @@ class pokemonsCollection(Resource):
     @cache.cached(timeout=1, query_string=True)
     def put(self):
         """
-        Updates a cat
-        
+        Updates an existing pokemon
+        """
 
         # retrieve and chek arguments
         try:
-            args = cat_arguments.parse_args()
-            cat_name = args['cat']
-            cat_properties = args['properties']
+            args = pokemon_arguments.parse_args()
+            pokemon_name = args['pokemon']
+            pokemon_properties = args['properties']
         except:
-            return handle400error(pokemons_ns, 'The providen arguments are not correct. Please, check the swagger documentation at /v1')
+            return handle400error(pokemons_ns, 'The provided arguments are not correct. Please, check the swagger documentation at /v1')
 
         # check parameters
-        if cat_name not in pokemons_model:
-            return handle404error(pokemons_ns, 'The providen cat was not found')
+        cur = con.cursor()
+        if args['pokemon'] is not None:
+            query= f"select count(1) from public.pokemon where name = '{args['pokemon']}'"
+            cur.execute(query)
+            rows = cur.fetchall()
+        if rows[0] == (0,):
+            return handle404error(pokemons_ns, 'The provided pokemon was not found')
 
         # update cat 
         try:
-            pokemons_model[cat_name] = cat_properties
+            cur = con.cursor()
+            name = args['pokemon']
+            types = args['properties']['type']
+            if len(types) <= 2:
+                region = args['properties']['region']
+                height = float(args['properties']['height'])
+                query = f"update public.pokemon set name = '{name}' , type = '{{{json.dumps(types)[1:-1]}}}' , region = '{region}' , height = {height} where name = '{name}'"
+                cur.execute(query)
+                con.commit()
         except:
             return handle500error(pokemons_ns)
-        """
-        return "put"
+        
+        if len(types) > 2:
+            return handle400error(pokemons_ns, "The provided arguments are not correct. Pokemon's can't have more than two types ...yet")
+
     @limiter.limit('1000/hour') 
     @api.expect(pokemon_body_name_arguments)
     @api.response(200, 'OK')
@@ -157,24 +174,30 @@ class pokemonsCollection(Resource):
     @cache.cached(timeout=1, query_string=True)
     def delete(self):
         """
-        Deletes a cat
-        
+        Deletes an existing pokemon
+        """
 
         # retrieve and chek arguments
         try:
-            args = cat_body_name_arguments.parse_args()
-            cat_name = args['cat']
+            args = pokemon_body_name_arguments.parse_args()
+            pokemon_name = args['pokemon']
         except:
-            return handle400error(pokemons_ns, 'The providen arguments are not correct. Please, check the swagger documentation at /v1')
+            return handle400error(pokemons_ns, 'The provided arguments are not correct. Please, check the swagger documentation at /v1')
 
         # check parameters
-        if cat_name not in pokemons_model:
-            return handle404error(pokemons_ns, 'The providen cat was not found')
+        cur = con.cursor()
+        if args['pokemon'] is not None:
+            query= f"select count(1) from public.pokemon where name = '{args['pokemon']}'"
+            cur.execute(query)
+            rows = cur.fetchall()
+        if rows[0] == (0,):
+            return handle404error(pokemons_ns, 'The provided cat was not found')
 
         # update cat 
         try:
-            del pokemons_model[cat_name]
+            cur = con.cursor()
+            query= "delete from public.pokemon where name = %s"
+            cur.execute(query,(args['pokemon'],))
+            con.commit()
         except:
             return handle500error(pokemons_ns)
-        """
-        return "delete"

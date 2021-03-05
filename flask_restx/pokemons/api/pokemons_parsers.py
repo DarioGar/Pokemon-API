@@ -4,9 +4,9 @@
 # See LICENSE for details.
 
 from flask_restx import reqparse
-
-pokemon_args_name_arguments = reqparse.RequestParser()
 # Argumentos que se esperan en la query en los distintos tipos HTTP
+pokemon_args_name_arguments = reqparse.RequestParser()
+
 pokemon_args_name_arguments.add_argument('pokemon',
 							location='args',
 							type=str,
