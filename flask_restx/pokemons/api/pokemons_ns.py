@@ -6,8 +6,10 @@
 import datetime
 from flask_restx import Resource
 import numpy as np
+import json
 import pandas as pd
 import psycopg2 as psycopg2
+import psycopg2.extras
 from api.v1 import api
 from pokemons.core import cache, limiter
 from pokemons.api.pokemons_models import pokemon_model
@@ -15,8 +17,6 @@ from pokemons.api.pokemons_parsers import pokemon_args_name_arguments, pokemon_b
 from pokemons.utils import handle400error, handle404error, handle500error
 
 pokemons_ns = api.namespace('pokemons', description='Provides pokemons information')
-
-pokemons_model = {}
 con = psycopg2.connect(database= "pokemon",user="postgres",password="563412",host="127.0.0.1",port="5432")
 
 @pokemons_ns.route('/pokemons')
@@ -37,18 +37,18 @@ class pokemonsCollection(Resource):
         # retrieve and chek arguments
         try:
             args = pokemon_args_name_arguments.parse_args()
-            cur = con.cursor()
+            cur = con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
             if args['pokemon'] is not None:
                 query= f"select * from public.pokemon where name = '{args['pokemon']}'"
                 cur.execute(query)
                 rows = cur.fetchall()
                 if len(rows) != 0:
-                    pokemon_name = rows[0]
+                    pokemon_name = rows
                 else:
-                    pokemon_name =  None
+                    pokemon_name = None
             else:
                 pokemon_name = None
-            print (pokemon_name)
+            #print(pokemon_name)
         except:
             return handle400error(pokemons_ns, 'The provided arguments are not correct. Please, check the swagger documentation at /v1')
 
@@ -60,12 +60,12 @@ class pokemonsCollection(Resource):
         try:
             if pokemon_name is None:
                 query= "select * from public.pokemon"
-                cur=con.cursor()
+                cur=con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
                 cur.execute(query)
                 rows = cur.fetchall()
-                pokemons = "Test"
+                pokemons = rows
             else:
-                pokemons = "pokemon_name"
+                pokemons = pokemon_name
         except:
             return handle500error(pokemons_ns)
         # if there is not pokemons found, return 404 error
@@ -83,28 +83,40 @@ class pokemonsCollection(Resource):
     @cache.cached(timeout=1, query_string=True)
     def post(self):
         """
-        Creates a cat
+        Creates a pokemon
         
-
+        """
         # retrieve and chek arguments
         try:
-            args = cat_arguments.parse_args()
-            cat_name = args['cat']
-            cat_properties = args['properties']
+            args = pokemon_arguments.parse_args()
+            pokemon_name = args['pokemon']
+            pokemon_properties = args['properties']
         except:
             return handle400error(pokemons_ns, 'The providen arguments are not correct. Please, check the swagger documentation at /v1')
 
         # check parameters
-        if cat_name in pokemons_model:
-            return handle400error(pokemons_ns, 'The providen cat was already created')
+        cur = con.cursor()
+        if args['pokemon'] is not None:
+            query= f"select count(1) from public.pokemon where name = '{args['pokemon']}'"
+            cur.execute(query)
+            rows = cur.fetchall()
+        if rows[0] != (0,):
+            return handle400error(pokemons_ns, 'The providen pokemon was already created')
 
         # build cat 
         try:
-            pokemons_model[cat_name] = cat_properties
+            cur = con.cursor()
+            name = args['pokemon']
+            types = args['properties']['type']
+            region = args['properties']['region']
+            height = args['properties']['height']
+
+            if len(types) > 2:
+                return handle400error(pokemons_ns, "The provided arguments are not correct. Pokemon's can't have more than two types ...yet")
+            query = f"insert into public.pokemon values ('{name}','{{{json.dumps(types)[1:-1]}}}','{region}','{height}') returning name"
+            cur.execute(query)
         except:
             return handle500error(pokemons_ns)
-        """
-        return "post"
     @limiter.limit('1000/hour') 
     @api.expect(pokemon_arguments)
     @api.response(200, 'OK')
