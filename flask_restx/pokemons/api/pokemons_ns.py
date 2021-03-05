@@ -10,6 +10,7 @@ import json
 import pandas as pd
 import psycopg2 as psycopg2
 import psycopg2.extras
+from psycopg2.extensions import AsIs
 from api.v1 import api
 from pokemons.core import cache, limiter
 from pokemons.api.pokemons_models import pokemon_model
@@ -39,8 +40,8 @@ class pokemonsCollection(Resource):
             args = pokemon_args_name_arguments.parse_args()
             cur = con.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
             if args['pokemon'] is not None:
-                query= f"select * from public.pokemon where name = '{args['pokemon']}'"
-                cur.execute(query)
+                query= "select * from public.pokemon where name = %s"
+                cur.execute(query,(args['pokemon'],))
                 rows = cur.fetchall()
                 if len(rows) != 0:
                     pokemon_name = rows
@@ -97,8 +98,8 @@ class pokemonsCollection(Resource):
         # check parameters
         cur = con.cursor()
         if args['pokemon'] is not None:
-            query= f"select count(1) from public.pokemon where name = '{args['pokemon']}'"
-            cur.execute(query)
+            query= "select count(1) from public.pokemon where name = %s"
+            cur.execute(query,(pokemon_name,))
             rows = cur.fetchall()
         if rows[0] != (0,):
             return handle400error(pokemons_ns, 'The provided pokemon was already created')
@@ -111,8 +112,8 @@ class pokemonsCollection(Resource):
             if len(types) <=2:
                 region = args['properties']['region']
                 height = float(args['properties']['height'])
-                query = f"insert into public.pokemon values ('{name}','{{{json.dumps(types)[1:-1]}}}','{region}',{height})"
-                retorno = cur.execute(query)
+                query = "insert into public.pokemon values (%s,'{%s}',%s,%s)"
+                retorno = cur.execute(query,(name,AsIs(json.dumps(types)[1:-1]),region,height))
                 con.commit()
         except:
             return handle500error(pokemons_ns)
@@ -142,8 +143,8 @@ class pokemonsCollection(Resource):
         # check parameters
         cur = con.cursor()
         if args['pokemon'] is not None:
-            query= f"select count(1) from public.pokemon where name = '{args['pokemon']}'"
-            cur.execute(query)
+            query= "select count(1) from public.pokemon where name = %s"
+            cur.execute(query,(pokemon_name,))
             rows = cur.fetchall()
         if rows[0] == (0,):
             return handle404error(pokemons_ns, 'The provided pokemon was not found')
@@ -156,8 +157,8 @@ class pokemonsCollection(Resource):
             if len(types) <= 2:
                 region = args['properties']['region']
                 height = float(args['properties']['height'])
-                query = f"update public.pokemon set name = '{name}' , type = '{{{json.dumps(types)[1:-1]}}}' , region = '{region}' , height = {height} where name = '{name}'"
-                cur.execute(query)
+                query = "update public.pokemon set name = %s , type = '{%s}' , region = %s , height = %s where name = %s"
+                cur.execute(query,(name,AsIs(json.dumps(types)[1:-1]),region,height,name))
                 con.commit()
         except:
             return handle500error(pokemons_ns)
@@ -187,8 +188,8 @@ class pokemonsCollection(Resource):
         # check parameters
         cur = con.cursor()
         if args['pokemon'] is not None:
-            query= f"select count(1) from public.pokemon where name = '{args['pokemon']}'"
-            cur.execute(query)
+            query= "select count(1) from public.pokemon where name = %s"
+            cur.execute(query,(pokemon_name,))
             rows = cur.fetchall()
         if rows[0] == (0,):
             return handle404error(pokemons_ns, 'The provided cat was not found')
