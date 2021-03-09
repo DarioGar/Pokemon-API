@@ -7,7 +7,6 @@ import datetime
 from flask_restx import Resource
 import numpy as np
 import json
-import pandas as pd
 import psycopg2 as psycopg2
 import psycopg2.extras
 from psycopg2.extensions import AsIs
