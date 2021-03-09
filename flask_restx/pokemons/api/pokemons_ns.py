@@ -7,14 +7,16 @@ import datetime
 from flask_restx import Resource
 import numpy as np
 import json
+import requests
 import pandas as pd
 import psycopg2 as psycopg2
 import psycopg2.extras
 from psycopg2.extensions import AsIs
+from bs4 import BeautifulSoup
 from api.v1 import api
 from pokemons.core import cache, limiter
 from pokemons.api.pokemons_models import pokemon_model
-from pokemons.api.pokemons_parsers import pokemon_args_name_arguments, pokemon_body_name_arguments, pokemon_arguments
+from pokemons.api.pokemons_parsers import pokemon_args_name_arguments, pokemon_body_name_arguments, pokemon_arguments, generation_args_name_arguments
 from pokemons.utils import handle400error, handle404error, handle500error
 
 pokemons_ns = api.namespace('pokemons', description='Provides pokemons information')
@@ -22,6 +24,8 @@ con = psycopg2.connect(database= "pokemon",user="postgres",password="563412",hos
 
 @pokemons_ns.route('/pokemons')
 class pokemonsCollection(Resource):
+
+
 
     @limiter.limit('1000/hour') 
     @api.expect(pokemon_args_name_arguments)
@@ -192,7 +196,7 @@ class pokemonsCollection(Resource):
             cur.execute(query,(pokemon_name,))
             rows = cur.fetchall()
         if rows[0] == (0,):
-            return handle404error(pokemons_ns, 'The provided cat was not found')
+            return handle404error(pokemons_ns, 'The provided pokemon was not found')
 
         # update cat 
         try:
@@ -202,3 +206,37 @@ class pokemonsCollection(Resource):
             con.commit()
         except:
             return handle500error(pokemons_ns)
+
+r = requests.get('https://pokemondb.net/pokedex/national')
+soup = BeautifulSoup(r.content,'html.parser')
+pokemon_generations = soup.select('body main .infocard-list infocard-list-pkmn-lg') 
+
+@pokemons_ns.route('/random')
+class pokemonsRandom(Resource):
+    
+    @limiter.limit('1000/hour')
+    @api.expect(generation_args_name_arguments)
+    @api.response(200, 'OK')
+    @api.response(404, 'Data not found')
+    @api.response(500, 'Unhandled errors')
+    @api.response(400, 'Invalid parameters')
+    @api.marshal_with(pokemon_model, code=200, description='OK', as_list=True)
+    def get(self):
+        """
+        Returns a random pokemon from the given generation
+        """
+        # Retrieve and check arguments
+        try:
+            args = generation_args_name_arguments.parse_args()
+            print(pokemon_generations)
+            return pokemon_generations
+            print("El tipo es" + type(pokemon_generations))
+            if args['generation'] > 0 and args['generation'] <= len(pokemon_generations):
+                print(pokemon_generations)
+        except:
+            return handle400error(pokemons_ns, 'The provided arguments are not correct. Please, check the swagger documentation at /v1')
+
+        return 'Test'
+
+            
+

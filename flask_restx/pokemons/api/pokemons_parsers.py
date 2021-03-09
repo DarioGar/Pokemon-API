@@ -34,3 +34,11 @@ pokemon_arguments.add_argument('properties',
 							type=dict,
 							required=True,
 							help='Pokemon\'s properties like name,type,region and height.')
+
+generation_args_name_arguments = reqparse.RequestParser()
+
+generation_args_name_arguments.add_argument('generation',
+							location='args',
+							type=str,
+							required=True,
+							help='Generation\'s number')
